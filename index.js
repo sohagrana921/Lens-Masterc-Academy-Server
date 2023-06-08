@@ -23,7 +23,8 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     const usersCollection = client.db("lensMasterDb").collection("users");
-    // user collection
+    const coursesCollection = client.db("lensMasterDb").collection("courses");
+    // user API
     app.get("/users", async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
@@ -65,6 +66,18 @@ async function run() {
       };
 
       const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    // Courses API
+    app.get("/courses", async (req, res) => {
+      const result = await coursesCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/courses", async (req, res) => {
+      const courses = req.body;
+      const result = await coursesCollection.insertOne(courses);
       res.send(result);
     });
     // Send a ping to confirm a successful connection
