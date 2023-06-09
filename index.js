@@ -24,6 +24,7 @@ async function run() {
     await client.connect();
     const usersCollection = client.db("lensMasterDb").collection("users");
     const coursesCollection = client.db("lensMasterDb").collection("courses");
+    const cartCollection = client.db("lensMasterDb").collection("carts");
     // user API
     app.get("/users", async (req, res) => {
       const result = await usersCollection.find().toArray();
@@ -78,6 +79,27 @@ async function run() {
     app.post("/courses", async (req, res) => {
       const courses = req.body;
       const result = await coursesCollection.insertOne(courses);
+      res.send(result);
+    });
+
+    // carts api
+    app.get("/carts/:email", async (req, res) => {
+      const result = await cartCollection
+        .find({ email: req.params.email })
+        .toArray();
+      res.send(result);
+    });
+
+    app.post("/carts", async (req, res) => {
+      const course = req.body;
+      const result = await cartCollection.insertOne(course);
+      res.send(result);
+    });
+
+    app.delete("/carts/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await cartCollection.deleteOne(query);
       res.send(result);
     });
     // Send a ping to confirm a successful connection
