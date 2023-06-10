@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 require("dotenv").config();
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 const port = process.env.PORT || 4000;
 
 // middleware
@@ -25,6 +26,8 @@ async function run() {
     const usersCollection = client.db("lensMasterDb").collection("users");
     const coursesCollection = client.db("lensMasterDb").collection("courses");
     const cartCollection = client.db("lensMasterDb").collection("carts");
+    const paymentCollection = client.db("lensMasterDb").collection("payments");
+
     // user API
     app.get("/users", async (req, res) => {
       const result = await usersCollection.find().toArray();
@@ -75,18 +78,96 @@ async function run() {
       const result = await coursesCollection.find().toArray();
       res.send(result);
     });
+    app.get("/courses/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await coursesCollection.findOne(query);
+      res.send(result);
+    });
 
     app.post("/courses", async (req, res) => {
       const courses = req.body;
       const result = await coursesCollection.insertOne(courses);
       res.send(result);
     });
+    app.put("/updateCourse/:id", async (req, res) => {
+      const id = req.params.id;
+      const body = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          name: body.name,
+          photoURL: body.photoURL,
+          seats: body.seats,
+          price: body.price,
+        },
+      };
+      const result = await coursesCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.patch("/courses/approve/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: "Approved",
+        },
+      };
+
+      const result = await coursesCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+    app.patch("/courses/feedback/:id", async (req, res) => {
+      const id = req.params.id;
+      const body = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          feedback: body.feedback,
+        },
+      };
+
+      const result = await coursesCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+    app.patch("/courses/deny/:id", async (req, res) => {
+      const id = req.params.id;
+
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: "Deny",
+        },
+      };
+
+      const result = await coursesCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
 
     // carts api
+
+    app.get("/carts", async (req, res) => {
+      const result = await cartCollection.find().toArray();
+      res.send(result);
+    });
+    app.get("/carts/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await cartCollection.findOne(query);
+      res.send(result);
+    });
+
     app.get("/carts/:email", async (req, res) => {
       const result = await cartCollection
         .find({ email: req.params.email })
         .toArray();
+      res.send(result);
+    });
+    app.get("/carts/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await cartCollection.find(query);
       res.send(result);
     });
 
@@ -102,6 +183,35 @@ async function run() {
       const result = await cartCollection.deleteOne(query);
       res.send(result);
     });
+
+    // create payment intent
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      console.log(price);
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+    // payment related api
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const insertResult = await paymentCollection.insertOne(payment);
+
+      const query = {
+        _id: { $in: payment.cartItems.map((id) => new ObjectId(id)) },
+      };
+      const deleteResult = await cartCollection.deleteMany(query);
+
+      res.send({ insertResult, deleteResult });
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
