@@ -158,16 +158,10 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/carts/:email", async (req, res) => {
+    app.get("/carts/email/:email", async (req, res) => {
       const result = await cartCollection
         .find({ email: req.params.email })
         .toArray();
-      res.send(result);
-    });
-    app.get("/carts/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await cartCollection.find(query);
       res.send(result);
     });
 
@@ -187,7 +181,7 @@ async function run() {
     // create payment intent
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
-      console.log(price);
+
       const amount = parseInt(price * 100);
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
@@ -199,7 +193,17 @@ async function run() {
         clientSecret: paymentIntent.client_secret,
       });
     });
-    // payment related api
+
+    //payment related api
+    app.get("/paymentHistory/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await paymentCollection
+        .find(query)
+        .sort({ date: -1 })
+        .toArray();
+      res.send(result);
+    });
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       const insertResult = await paymentCollection.insertOne(payment);
@@ -208,8 +212,23 @@ async function run() {
         _id: { $in: payment.cartItems.map((id) => new ObjectId(id)) },
       };
       const deleteResult = await cartCollection.deleteMany(query);
+      const filter = { _id: new ObjectId(payment.classId) };
 
-      res.send({ insertResult, deleteResult });
+      // Find the document in the sportsClass collection
+      const sportsClass = await coursesCollection.findOne(filter);
+
+      // Update the available seat count
+      sportsClass.seats = sportsClass.seats - 1;
+      sportsClass.enroll = sportsClass.enroll + 1;
+
+      const updateResult = await coursesCollection.updateOne(filter, {
+        $set: sportsClass,
+      });
+      // Update the enrolled student count
+      // sportsClass.students = sportsClass.students + 1;
+      // const updateStudents = await sportsClassCollection.updateOne(filter, { $set: sportsClass });
+
+      res.send({ insertResult, deleteResult, updateResult });
     });
 
     // Send a ping to confirm a successful connection
