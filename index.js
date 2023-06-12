@@ -144,8 +144,7 @@ async function run() {
       res.send(result);
     });
 
-    // carts api
-
+    // carts related api
     app.get("/carts", async (req, res) => {
       const result = await cartCollection.find().toArray();
       res.send(result);
