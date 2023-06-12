@@ -192,7 +192,7 @@ async function run() {
       });
     });
 
-    //payment related api
+    //payment api
     app.get("/paymentHistory/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
