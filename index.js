@@ -72,7 +72,7 @@ async function run() {
       res.send(result);
     });
 
-    // Courses API
+    // Courses related API
     app.get("/courses", async (req, res) => {
       const result = await coursesCollection.find().toArray();
       res.send(result);
