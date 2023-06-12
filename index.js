@@ -5,7 +5,7 @@ require("dotenv").config();
 const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 const port = process.env.PORT || 4000;
 
-//All  middleware
+//All  middleware here
 app.use(cors());
 app.use(express.json());
 
